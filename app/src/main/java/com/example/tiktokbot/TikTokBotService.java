@@ -2,6 +2,7 @@ package com.example.tiktokbot;
 
 import android.accessibilityservice.AccessibilityService;
 import android.accessibilityservice.AccessibilityServiceInfo;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.SystemClock;
 import android.view.accessibility.AccessibilityEvent;
@@ -30,29 +31,62 @@ public class TikTokBotService extends AccessibilityService {
 
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
-        // --- АВТООТВЕТЧИК (Ловим уведомления) ---
+        // ==========================================
+        // 1. АВТООТВЕТЧИК (Ловим уведомления Telegram)
+        // ==========================================
         if (event.getEventType() == AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED) {
             String contact = prefs.getString("contact", "");
+            String replyText = prefs.getString("autoreply", "");
+            
             List<CharSequence> textList = event.getText();
-            if (!contact.isEmpty() && textList != null && !textList.isEmpty()) {
+            if (!contact.isEmpty() && !replyText.isEmpty() && textList != null && !textList.isEmpty()) {
+                // Если в уведомлении есть имя контакта
                 if (textList.get(0).toString().contains(contact)) {
-                    // Здесь будет логика ответа (пока просто лог)
-                    System.out.println("Найдено уведомление от " + contact);
+                    // Открываем Telegram
+                    Intent intent = getPackageManager().getLaunchIntentForPackage("org.telegram.messenger");
+                    if (intent != null) {
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        startActivity(intent);
+                        
+                        // Ждем загрузки и вводим текст
+                        new Thread(() -> {
+                            SystemClock.sleep(2000);
+                            AccessibilityNodeInfo root = getRootInActiveWindow();
+                            if (root != null) {
+                                AccessibilityNodeInfo input = findEditText(root);
+                                if (input != null) {
+                                    // Вставляем текст
+                                    android.os.Bundle args = new android.os.Bundle();
+                                    args.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, replyText);
+                                    input.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args);
+                                    
+                                    SystemClock.sleep(500);
+                                    // Ищем кнопку отправки в Telegram
+                                    List<AccessibilityNodeInfo> sendBtn = root.findAccessibilityNodeInfosByViewId("org.telegram.messenger:id/send_button");
+                                    if (sendBtn != null && !sendBtn.isEmpty()) {
+                                        sendBtn.get(0).performAction(AccessibilityNodeInfo.ACTION_CLICK);
+                                    }
+                                }
+                            }
+                        }).start();
+                    }
                 }
             }
         }
 
-        // --- ЛОГИКА TIKTOK ---
+        // ==========================================
+        // 2. ЛОГИКА TIKTOK
+        // ==========================================
         if (!isRunning) return;
 
-        // 1. Рандомизация задержки (от 3 до 7 секунд), чтобы не палиться
+        // Рандомизация (от 3 до 7 секунд)
         int randomDelay = 3000 + random.nextInt(4000);
         if (System.currentTimeMillis() - lastActionTime < randomDelay) return;
 
         AccessibilityNodeInfo rootNode = getRootInActiveWindow();
         if (rootNode == null) return;
 
-        // 2. Включение VPN (если открыто приложение VPN)
+        // Включение VPN (если открыто приложение)
         List<AccessibilityNodeInfo> connectBtn = rootNode.findAccessibilityNodeInfosByText("Подключить");
         if (connectBtn == null || connectBtn.isEmpty()) connectBtn = rootNode.findAccessibilityNodeInfosByText("Connect");
         
@@ -62,7 +96,7 @@ public class TikTokBotService extends AccessibilityService {
             return;
         }
 
-        // 3. Поиск кнопки комментариев на разных языках
+        // Поиск кнопки комментов
         List<AccessibilityNodeInfo> commentBtns = rootNode.findAccessibilityNodeInfosByText("Комментарии");
         if (commentBtns == null || commentBtns.isEmpty()) commentBtns = rootNode.findAccessibilityNodeInfosByText("Comments");
         if (commentBtns == null || commentBtns.isEmpty()) commentBtns = rootNode.findAccessibilityNodeInfosByText("Комментарий");
@@ -72,7 +106,7 @@ public class TikTokBotService extends AccessibilityService {
             lastActionTime = System.currentTimeMillis();
             errorCount = 0; 
             
-            // 4. Ввод текста
+            // Ввод текста
             new Thread(() -> {
                 SystemClock.sleep(1500 + random.nextInt(1000));
                 AccessibilityNodeInfo root2 = getRootInActiveWindow();
@@ -91,6 +125,7 @@ public class TikTokBotService extends AccessibilityService {
                     if (sendBtn != null && !sendBtn.isEmpty()) {
                         sendBtn.get(0).performAction(AccessibilityNodeInfo.ACTION_CLICK);
                     } else {
+                        // Если текста нет, ищем по ID
                         List<AccessibilityNodeInfo> sendBtnId = root2.findAccessibilityNodeInfosByViewId("com.zhiliaoapp.musically:id/btn_send");
                         if (sendBtnId != null && !sendBtnId.isEmpty()) {
                             sendBtnId.get(0).performAction(AccessibilityNodeInfo.ACTION_CLICK);
@@ -101,7 +136,7 @@ public class TikTokBotService extends AccessibilityService {
             return; 
         }
 
-        // 5. Листание ленты
+        // Листание ленты
         AccessibilityNodeInfo scrollableNode = findScrollableNode(rootNode);
         if (scrollableNode != null) {
             scrollableNode.performAction(AccessibilityNodeInfo.ACTION_SCROLL_FORWARD);
@@ -109,7 +144,7 @@ public class TikTokBotService extends AccessibilityService {
             errorCount = 0;
         } else {
             errorCount++;
-            if (errorCount > 5) stopBot(); // Автопауза, если бот застрял
+            if (errorCount > 5) stopBot(); // Автопауза
         }
     }
 
