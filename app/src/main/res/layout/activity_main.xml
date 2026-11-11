@@ -4,22 +4,51 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:padding="24dp"
-    android:background="@drawable/gradient_bg">
+    android:background="#1A0B2E">
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="TikTok Auto-Bot"
+        android:text="LociBot"
         android:textColor="#FFFFFF"
         android:textSize="28sp"
         android:textStyle="bold"
-        android:layout_marginBottom="32dp"/>
+        android:layout_marginBottom="24dp"/>
 
     <EditText
         android:id="@+id/editTextComment"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:hint="Текст комментария..."
+        android:textColorHint="#A0A0A0"
+        android:textColor="#FFFFFF"
+        android:backgroundTint="#9C27B0"
+        android:layout_marginBottom="16dp"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Автоответчик"
+        android:textColor="#FFFFFF"
+        android:textSize="18sp"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="8dp"/>
+
+    <EditText
+        android:id="@+id/editTextContact"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Кому отвечать (имя)..."
+        android:textColorHint="#A0A0A0"
+        android:textColor="#FFFFFF"
+        android:backgroundTint="#9C27B0"
+        android:layout_marginBottom="16dp"/>
+
+    <EditText
+        android:id="@+id/editTextAutoReply"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Текст автоответа..."
         android:textColorHint="#A0A0A0"
         android:textColor="#FFFFFF"
         android:backgroundTint="#9C27B0"
