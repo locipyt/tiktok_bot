@@ -6,6 +6,7 @@ import android.graphics.PixelFormat;
 import android.os.IBinder;
 import android.view.Gravity;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
@@ -13,6 +14,7 @@ import android.widget.Button;
 public class FloatingService extends Service {
     private WindowManager windowManager;
     private View floatingView;
+    private WindowManager.LayoutParams params;
 
     @Override
     public IBinder onBind(Intent intent) { return null; }
@@ -30,7 +32,7 @@ public class FloatingService extends Service {
             layoutFlag = WindowManager.LayoutParams.TYPE_PHONE;
         }
         
-        WindowManager.LayoutParams params = new WindowManager.LayoutParams(
+        params = new WindowManager.LayoutParams(
                 WindowManager.LayoutParams.WRAP_CONTENT,
                 WindowManager.LayoutParams.WRAP_CONTENT,
                 layoutFlag,
@@ -38,16 +40,44 @@ public class FloatingService extends Service {
                 PixelFormat.TRANSLUCENT);
 
         params.gravity = Gravity.TOP | Gravity.START;
-        params.x = 10;
-        params.y = 100;
+        params.x = 50;
+        params.y = 150;
 
         windowManager.addView(floatingView, params);
         
         Button btnStart = floatingView.findViewById(R.id.btnStart);
         Button btnStop = floatingView.findViewById(R.id.btnStop);
+        Button btnClose = floatingView.findViewById(R.id.btnClose);
 
         btnStart.setOnClickListener(v -> TikTokBotService.startBot());
         btnStop.setOnClickListener(v -> TikTokBotService.stopBot());
+        btnClose.setOnClickListener(v -> stopSelf()); // Закрыть окно
+
+        // Логика перетаскивания окна
+        floatingView.setOnTouchListener(new View.OnTouchListener() {
+            private int initialX;
+            private int initialY;
+            private float initialTouchX;
+            private float initialTouchY;
+
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                switch (event.getAction()) {
+                    case MotionEvent.ACTION_DOWN:
+                        initialX = params.x;
+                        initialY = params.y;
+                        initialTouchX = event.getRawX();
+                        initialTouchY = event.getRawY();
+                        return true;
+                    case MotionEvent.ACTION_MOVE:
+                        params.x = initialX + (int) (event.getRawX() - initialTouchX);
+                        params.y = initialY + (int) (event.getRawY() - initialTouchY);
+                        windowManager.updateViewLayout(floatingView, params);
+                        return true;
+                }
+                return false;
+            }
+        });
     }
 
     @Override
