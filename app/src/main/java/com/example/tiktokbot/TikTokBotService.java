@@ -7,11 +7,14 @@ import android.os.SystemClock;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
 import java.util.List;
+import java.util.Random;
 
 public class TikTokBotService extends AccessibilityService {
     private static boolean isRunning = false;
     private SharedPreferences prefs;
     private long lastActionTime = 0;
+    private int errorCount = 0;
+    private Random random = new Random();
 
     public static void startBot() { isRunning = true; }
     public static void stopBot() { isRunning = false; }
@@ -27,36 +30,51 @@ public class TikTokBotService extends AccessibilityService {
 
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
+        // --- АВТООТВЕТЧИК (Ловим уведомления) ---
+        if (event.getEventType() == AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED) {
+            String contact = prefs.getString("contact", "");
+            List<CharSequence> textList = event.getText();
+            if (!contact.isEmpty() && textList != null && !textList.isEmpty()) {
+                if (textList.get(0).toString().contains(contact)) {
+                    // Здесь будет логика ответа (пока просто лог)
+                    System.out.println("Найдено уведомление от " + contact);
+                }
+            }
+        }
+
+        // --- ЛОГИКА TIKTOK ---
         if (!isRunning) return;
-        if (System.currentTimeMillis() - lastActionTime < 2500) return;
+
+        // 1. Рандомизация задержки (от 3 до 7 секунд), чтобы не палиться
+        int randomDelay = 3000 + random.nextInt(4000);
+        if (System.currentTimeMillis() - lastActionTime < randomDelay) return;
 
         AccessibilityNodeInfo rootNode = getRootInActiveWindow();
         if (rootNode == null) return;
 
-        // --- ВКЛЮЧЕНИЕ VPN (если открыто приложение VPN) ---
+        // 2. Включение VPN (если открыто приложение VPN)
         List<AccessibilityNodeInfo> connectBtn = rootNode.findAccessibilityNodeInfosByText("Подключить");
-        if (connectBtn == null || connectBtn.isEmpty()) {
-            connectBtn = rootNode.findAccessibilityNodeInfosByText("Connect");
-        }
+        if (connectBtn == null || connectBtn.isEmpty()) connectBtn = rootNode.findAccessibilityNodeInfosByText("Connect");
+        
         if (connectBtn != null && !connectBtn.isEmpty()) {
             connectBtn.get(0).performAction(AccessibilityNodeInfo.ACTION_CLICK);
             lastActionTime = System.currentTimeMillis();
             return;
         }
 
-        // --- TIKTOK (Поиск кнопки комментов) ---
+        // 3. Поиск кнопки комментариев на разных языках
         List<AccessibilityNodeInfo> commentBtns = rootNode.findAccessibilityNodeInfosByText("Комментарии");
-        if (commentBtns == null || commentBtns.isEmpty()) {
-            commentBtns = rootNode.findAccessibilityNodeInfosByText("Comments");
-        }
+        if (commentBtns == null || commentBtns.isEmpty()) commentBtns = rootNode.findAccessibilityNodeInfosByText("Comments");
+        if (commentBtns == null || commentBtns.isEmpty()) commentBtns = rootNode.findAccessibilityNodeInfosByText("Комментарий");
 
         if (commentBtns != null && !commentBtns.isEmpty()) {
             commentBtns.get(0).performAction(AccessibilityNodeInfo.ACTION_CLICK);
             lastActionTime = System.currentTimeMillis();
+            errorCount = 0; 
             
-            // Ввод текста
+            // 4. Ввод текста
             new Thread(() -> {
-                SystemClock.sleep(1500);
+                SystemClock.sleep(1500 + random.nextInt(1000));
                 AccessibilityNodeInfo root2 = getRootInActiveWindow();
                 if (root2 == null) return;
                 
@@ -72,17 +90,26 @@ public class TikTokBotService extends AccessibilityService {
                     
                     if (sendBtn != null && !sendBtn.isEmpty()) {
                         sendBtn.get(0).performAction(AccessibilityNodeInfo.ACTION_CLICK);
+                    } else {
+                        List<AccessibilityNodeInfo> sendBtnId = root2.findAccessibilityNodeInfosByViewId("com.zhiliaoapp.musically:id/btn_send");
+                        if (sendBtnId != null && !sendBtnId.isEmpty()) {
+                            sendBtnId.get(0).performAction(AccessibilityNodeInfo.ACTION_CLICK);
+                        }
                     }
                 }
             }).start();
             return; 
         }
 
-        // --- ЛИСТАНИЕ ЛЕНТЫ ---
+        // 5. Листание ленты
         AccessibilityNodeInfo scrollableNode = findScrollableNode(rootNode);
         if (scrollableNode != null) {
             scrollableNode.performAction(AccessibilityNodeInfo.ACTION_SCROLL_FORWARD);
             lastActionTime = System.currentTimeMillis();
+            errorCount = 0;
+        } else {
+            errorCount++;
+            if (errorCount > 5) stopBot(); // Автопауза, если бот застрял
         }
     }
 
