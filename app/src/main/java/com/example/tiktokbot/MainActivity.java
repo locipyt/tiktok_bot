@@ -1,13 +1,13 @@
 package com.example.tiktokbot;
 
-import android.animation.ObjectAnimator;
-import android.animation.ValueAnimator;
 import android.content.Intent;
-import android.graphics.Color;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
@@ -20,42 +20,59 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // --- АНИМАЦИЯ ФОНА ---
-        LinearLayout rootLayout = findViewById(R.id.rootLayout);
-        if (rootLayout != null) {
-            ObjectAnimator animator = ObjectAnimator.ofFloat(rootLayout, "backgroundColor", 
-                    Color.parseColor("#1A0B2E"), Color.parseColor("#0A0A0F"));
-            animator.setDuration(5000); // Длительность (5 секунд)
-            animator.setRepeatCount(ValueAnimator.INFINITE); // Бесконечно
-            animator.setRepeatMode(ValueAnimator.REVERSE); // Плавно туда и обратно
-            animator.start();
-        }
+        LinearLayout layoutAgent = findViewById(R.id.layoutAgent);
+        LinearLayout layoutTikTok = findViewById(R.id.layoutTikTok);
+        Button tabAgentBtn = findViewById(R.id.tabAgentBtn);
+        Button tabTikTokBtn = findViewById(R.id.tabTikTokBtn);
+
+        tabAgentBtn.setOnClickListener(v -> {
+            layoutAgent.setVisibility(View.VISIBLE);
+            layoutTikTok.setVisibility(View.GONE);
+        });
+        tabTikTokBtn.setOnClickListener(v -> {
+            layoutAgent.setVisibility(View.GONE);
+            layoutTikTok.setVisibility(View.VISIBLE);
+        });
+
+        EditText editTextCommand = findViewById(R.id.editTextCommand);
+        Button btnExecute = findViewById(R.id.btnExecute);
+        btnExecute.setOnClickListener(v -> {
+            String command = editTextCommand.getText().toString().trim().toLowerCase();
+            if (command.startsWith("открой ")) {
+                openApp(command.replace("открой ", "").trim());
+            } else {
+                Toast.makeText(this, "Команда не распознана", Toast.LENGTH_SHORT).show();
+            }
+        });
 
         EditText editTextComment = findViewById(R.id.editTextComment);
-        EditText editTextContact = findViewById(R.id.editTextContact);
-        EditText editTextAutoReply = findViewById(R.id.editTextAutoReply);
-        Button btnStart = findViewById(R.id.btnStartService);
-
-        btnStart.setOnClickListener(v -> {
-            // Сохраняем настройки
+        Button btnStartTikTok = findViewById(R.id.btnStartTikTok);
+        btnStartTikTok.setOnClickListener(v -> {
             getSharedPreferences("BotPrefs", MODE_PRIVATE).edit()
-                .putString("comment", editTextComment.getText().toString())
-                .putString("contact", editTextContact.getText().toString())
-                .putString("autoreply", editTextAutoReply.getText().toString())
-                .apply();
+                .putString("comment", editTextComment.getText().toString()).apply();
 
-            // Проверка разрешения на плавающее окно
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
                 Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName()));
                 startActivity(intent);
-                Toast.makeText(this, "Разреши отображение поверх окон", Toast.LENGTH_LONG).show();
             } else {
-                // Запуск плавающего окна и настроек доступности
                 startService(new Intent(this, FloatingService.class));
-                Intent intent = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);
-                startActivity(intent);
-                Toast.makeText(this, "Включи LociBot в Спец. возможностях", Toast.LENGTH_LONG).show();
+                startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
             }
         });
+    }
+
+    private void openApp(String appName) {
+        PackageManager pm = getPackageManager();
+        for (ApplicationInfo appInfo : pm.getInstalledApplications(0)) {
+            String label = pm.getApplicationLabel(appInfo).toString().toLowerCase();
+            if (label.contains(appName)) {
+                Intent launchIntent = pm.getLaunchIntentForPackage(appInfo.packageName);
+                if (launchIntent != null) {
+                    startActivity(launchIntent);
+                    return;
+                }
+            }
+        }
+        Toast.makeText(this, "Приложение не найдено", Toast.LENGTH_SHORT).show();
     }
 }
