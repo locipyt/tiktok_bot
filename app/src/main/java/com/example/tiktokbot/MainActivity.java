@@ -17,25 +17,27 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         EditText editTextComment = findViewById(R.id.editTextComment);
+        EditText editTextContact = findViewById(R.id.editTextContact);
+        EditText editTextAutoReply = findViewById(R.id.editTextAutoReply);
         Button btnStart = findViewById(R.id.btnStartService);
 
         btnStart.setOnClickListener(v -> {
-            String commentText = editTextComment.getText().toString();
-            getSharedPreferences("BotPrefs", MODE_PRIVATE).edit().putString("comment", commentText).apply();
+            // Сохраняем все три поля в память
+            getSharedPreferences("BotPrefs", MODE_PRIVATE).edit()
+                .putString("comment", editTextComment.getText().toString())
+                .putString("contact", editTextContact.getText().toString())
+                .putString("autoreply", editTextAutoReply.getText().toString())
+                .apply();
 
-            // Проверка разрешения на плавающее окно
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
                 Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName()));
                 startActivity(intent);
                 Toast.makeText(this, "Разреши отображение поверх окон", Toast.LENGTH_LONG).show();
             } else {
-                // Запуск плавающего окна
                 startService(new Intent(this, FloatingService.class));
-                
-                // Отправляем пользователя в настройки Accessibility для включения бота
                 Intent intent = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);
                 startActivity(intent);
-                Toast.makeText(this, "Включи LociBot в Спец. возможностях", Toast.LENGTH_LONG).show();
+                Toast.makeText(this, "Включи LocoBot в Спец. возможностях", Toast.LENGTH_LONG).show();
             }
         });
     }
